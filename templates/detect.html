@@ -37,7 +37,64 @@
 {% block scripts %}
 <script>
     const DISEASE_PARAMS = JSON.parse('{{ DISEASE_PARAMETERS | tojson }}');
-    const CATEGORICAL_FIELDS = ['Blood_Pressure']; 
+    const CATEGORICAL_FIELDS = ['Blood_Pressure', 'Sex', 'Thyroxine']; 
+
+    // Mapping of parameter names to full descriptive names
+    const PARAM_LABELS = {
+        'Pregnancies': 'Number of Pregnancies',
+        'Glucose': 'Glucose Level (mg/dL)',
+        'BloodPressure': 'Blood Pressure (mmHg)',
+        'BMI': 'Body Mass Index (BMI)',
+        'Age': 'Age (years)',
+        'Gender': 'Gender',
+        'sg': 'Specific Gravity',
+        'al': 'Albumin (mg/dL)',
+        'rbc': 'Red Blood Cells (RBC)',
+        'pc': 'Pus Cells',
+        'hemo': 'Hemoglobin (g/dL)',
+        'wc': 'White Blood Cells (WBC)',
+        'rc': 'Red Blood Cell Count',
+        'bp': 'Blood Pressure (mmHg)',
+        'age': 'Age (years)',
+        'sex': 'Sex',
+        'Sex': 'Sex',
+        'cp': 'Chest Pain Type',
+        'trestbps': 'Resting Blood Pressure (mmHg)',
+        'chol': 'Cholesterol Level (mg/dL)',
+        'thalach': 'Maximum Heart Rate Achieved',
+        'exang': 'Exercise Induced Angina',
+        'Total_Bilirubin': 'Total Bilirubin (mg/dL)',
+        'Direct_Bilirubin': 'Direct Bilirubin (mg/dL)',
+        'Alkaline_Phosphotase': 'Alkaline Phosphatase (IU/L)',
+        'Alamine_Aminotransferase': 'Alamine Aminotransferase (IU/L)',
+        'Aspartate_Aminotransferase': 'Aspartate Aminotransferase (IU/L)',
+        'Blood_Pressure': 'Blood Pressure Status',
+        'TSH': 'TSH Level (µIU/mL)',
+        'T3': 'T3 Level (ng/dL)',
+        'T4': 'T4 Level (µg/dL)',
+        'Thyroxine': 'Thyroxine Status',
+        'Temperature': 'Temperature (°C)',
+        'Headache': 'Headache Severity',
+        'Vomiting': 'Vomiting Status',
+        'JointPain': 'Joint Pain Status',
+        'Joint_Pain': 'Joint Pain Status',
+        'RBC': 'Red Blood Cell Count (millions/µL)'
+    };
+
+    function getParameterLabel(param) {
+        return PARAM_LABELS[param] || param.replace(/_/g, ' ');
+    }
+
+    function getDropdownOptions(param, diseaseKey) {
+        if (param === 'Blood_Pressure') {
+            return '<option value="Normal">Normal</option><option value="Abnormal">Abnormal</option>';
+        } else if (param === 'Sex') {
+            return '<option value="">Select Sex</option><option value="Male">Male</option><option value="Female">Female</option>';
+        } else if (param === 'Thyroxine') {
+            return '<option value="">Select Thyroxine Status</option><option value="Normal">Normal</option><option value="High">High</option><option value="Low">Low</option>';
+        }
+        return '<option value="Normal">Normal</option><option value="Abnormal">Abnormal</option>';
+    }
 
     function getResultClass(result) {
         switch (result) {
@@ -55,8 +112,26 @@
         const predictionForm = document.getElementById('prediction-form');
         const resultsContainer = document.getElementById('results-container');
         const loadingSpinner = document.getElementById('loading-spinner');
+        let currentDiseaseKey = ''; // Track current disease
+        
+        // Function to toggle Pregnancies field based on Gender
+        function togglePregnanciesField() {
+            if (currentDiseaseKey === 'diabetes') {
+                const genderSelect = document.querySelector('[name="_ui_gender"]');
+                const pregnanciesGroup = document.getElementById('Pregnancies-group');
+                if (genderSelect && pregnanciesGroup) {
+                    const isFemale = genderSelect.value === 'Female';
+                    pregnanciesGroup.style.display = isFemale ? 'block' : 'none';
+                    const pregnanciesInput = document.getElementById('Pregnancies');
+                    if (pregnanciesInput) {
+                        pregnanciesInput.required = isFemale;
+                    }
+                }
+            }
+        }
         
         window.showForm = function(diseaseKey, diseaseName) {
+            currentDiseaseKey = diseaseKey;
             formTitle.textContent = `Input Parameters for ${diseaseName}`;
             predictionForm.action = `{{ url_for('predict', disease_name='__key__') }}`.replace('__key__', diseaseKey);
 
@@ -64,23 +139,42 @@
             const params = DISEASE_PARAMS[diseaseKey];
 
             if (params && params.length > 0) {
+                // Add Gender field first for diabetes (UI only, not sent to model)
+                if (diseaseKey === 'diabetes') {
+                    html += `
+                        <div class="form-group">
+                            <label for="Gender">${getParameterLabel('Gender')}*</label>
+                            <select id="Gender" name="_ui_gender" class="form-select" required onchange="togglePregnanciesField()">
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                    `;
+                }
+                
                 params.forEach(param => {
-                    const cleanParam = param.replace(/_/g, ' ');
+                    const labelText = getParameterLabel(param);
+                    
+                    // Hide Pregnancies by default if it's diabetes
+                    const isPregnancies = param === 'Pregnancies';
+                    const hidden = diseaseKey === 'diabetes' && isPregnancies ? 'style="display:none;"' : '';
+                    const groupId = isPregnancies ? 'Pregnancies-group' : '';
+                    
                     if (CATEGORICAL_FIELDS.includes(param)) {
                         html += `
-                            <div class="form-group">
-                                <label for="${param}">${cleanParam}*</label>
-                                <select id="${param}" name="${param}" required>
-                                    <option value="Normal">Normal</option>
-                                    <option value="Abnormal">Abnormal</option>
+                            <div class="form-group" id="${groupId}" ${hidden}>
+                                <label for="${param}">${labelText}*</label>
+                                <select id="${param}" name="${param}" class="form-select" required>
+                                    ${getDropdownOptions(param, diseaseKey)}
                                 </select>
                             </div>
                         `;
                     } else {
                         html += `
-                            <div class="form-group">
-                                <label for="${param}">${cleanParam}*</label>
-                                <input type="number" step="any" id="${param}" name="${param}" required>
+                            <div class="form-group" id="${groupId}" ${hidden}>
+                                <label for="${param}">${labelText}*</label>
+                                <input type="number" step="any" id="${param}" name="${param}" class="form-input" required>
                             </div>
                         `;
                     }
@@ -93,6 +187,14 @@
             formContainer.classList.remove('hidden');
             resultsContainer.classList.add('hidden');
             formContainer.scrollIntoView({ behavior: 'smooth' });
+            
+            // Re-attach the toggle function for the new Gender selector
+            setTimeout(() => {
+                const genderSelect = document.querySelector('[name="_ui_gender"]');
+                if (genderSelect) {
+                    genderSelect.addEventListener('change', togglePregnanciesField);
+                }
+            }, 0);
         };
 
         predictionForm.addEventListener('submit', async function(e) {

@@ -6,9 +6,17 @@
     <h2 style="text-align: center; color: var(--color-primary); margin-bottom: 40px;">👨‍⚕️ Expert Consultation Network</h2>
     <p style="text-align: center; margin-bottom: 30px; max-width: 900px; margin-left: auto; margin-right: auto;">Connect with specialized healthcare professionals. **Disclaimer:** This is a simulated directory. Always verify credentials with a licensed medical board before seeking advice.</p>
 
-    <div class="doctor-grid">
+    <!-- Search Bar -->
+    <div class="search-container">
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="Search by doctor name, specialty, or experience..." onkeyup="filterDoctors()">
+            <button onclick="filterDoctors()"><i class="fas fa-search"></i> Search</button>
+        </div>
+    </div>
+
+    <div class="doctor-grid" id="doctorGrid">
         {% for doctor in doctors %}
-        <div class="doctor-card">
+        <div class="doctor-card" data-name="{{ doctor.name.lower() }}" data-specialty="{{ doctor.specialty.lower() }}" data-experience="{{ doctor.experience.lower() }}">
             <img src="{{ url_for('static', filename='images/doc_placeholder.png') }}" alt="{{ doctor.name }}" loading="lazy">
             <h4>{{ doctor.name }}</h4>
             <p><strong>Specialization:</strong> <span style="color: var(--color-secondary); font-weight: 600;">{{ doctor.specialty }}</span></p>
@@ -19,5 +27,33 @@
         </div>
         {% endfor %}
     </div>
+    <div id="noResults" class="no-results" style="display: none;">
+        <i class="fas fa-search" style="font-size: 3rem; color: #ccc; margin-bottom: 10px;"></i>
+        <p>No doctors found matching your search.</p>
+    </div>
 </section>
+
+<script>
+    function filterDoctors() {
+        const searchInput = document.getElementById('searchInput').value.toLowerCase();
+        const doctorCards = document.querySelectorAll('.doctor-card');
+        const noResults = document.getElementById('noResults');
+        let visibleCount = 0;
+
+        doctorCards.forEach(card => {
+            const name = card.dataset.name;
+            const specialty = card.dataset.specialty;
+            const experience = card.dataset.experience;
+
+            if (name.includes(searchInput) || specialty.includes(searchInput) || experience.includes(searchInput) || searchInput === '') {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+    }
+</script>
 {% endblock %}

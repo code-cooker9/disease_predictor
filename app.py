@@ -27,9 +27,60 @@ DATABASE = "database.db"
 # Database helper
 # --------------------------------------------------
 def get_db_connection():
-    conn = sqlite3.connect(DATABASE)
+    conn = sqlite3.connect(DATABASE, timeout=10.0)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
     return conn
+
+# --------------------------------------------------
+# Database initialization
+# --------------------------------------------------
+def init_db():
+    """Initialize the database with schema if it doesn't exist"""
+    try:
+        conn = sqlite3.connect(DATABASE, timeout=10.0)
+        cursor = conn.cursor()
+        
+        # Create users table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash BLOB NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Create predictions table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS predictions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                disease TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                input_data TEXT,
+                result TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Create contact table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS contact (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                message TEXT NOT NULL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
+        print("✓ Database initialized successfully")
+    except Exception as e:
+        print(f"✗ Database initialization failed: {e}")
 
 # --------------------------------------------------
 # Context processor for datetime
@@ -63,21 +114,44 @@ def thyroid_rule(inputs):
     
     Inputs:
     - Age: 20–40 healthy
-    - Sex: M/F (0 or 1, no indication)
+    - Sex: Male/Female
     - TSH (µIU/mL): 0.4–4.0 healthy, <0.4 (hyper) or >4.0 (hypo) disease
     - T3 (ng/dL): 80–200 healthy, <80 or >200 disease
     - T4 (µg/dL): 4.5–12 healthy, <4.5 or >12 disease
-    - Thyroxine: Normal (0) healthy, High/Low (1) disease
+    - Thyroxine: Normal/High/Low
 
     Returns: "Normal" or "Risky"
     """
     try:
         age = float(inputs.get('Age', 0))
-        sex = int(inputs.get('Sex', -1))
+        sex_input = inputs.get('Sex', '').strip()
+        
+        # Convert Male/Female to 0/1 for internal processing
+        if sex_input.lower() == 'male':
+            sex = 0
+        elif sex_input.lower() == 'female':
+            sex = 1
+        else:
+            try:
+                sex = int(sex_input)
+            except:
+                return "Risky"
+        
         tsh = float(inputs.get('TSH', 0))
         t3 = float(inputs.get('T3', 0))
         t4 = float(inputs.get('T4', 0))
-        thyroxine = int(inputs.get('Thyroxine', 0))
+        thyroxine_input = inputs.get('Thyroxine', '').strip()
+        
+        # Convert Thyroxine status to 0/1
+        if thyroxine_input.lower() in ['normal', 'none', '0']:
+            thyroxine = 0
+        elif thyroxine_input.lower() in ['high', 'low', 'abnormal', '1']:
+            thyroxine = 1
+        else:
+            try:
+                thyroxine = int(thyroxine_input)
+            except:
+                return "Risky"
     except:
         return "Risky"
 
@@ -625,6 +699,43 @@ SUGGESTIONS = {
 def index():
     return render_template('index.html')
 
+# --------------------------------------------------
+# Disease to Doctor Mapping
+# --------------------------------------------------
+def get_recommended_doctor(disease_name):
+    """Map diseases to recommended doctor specialties"""
+    disease_doctor_map = {
+        'diabetes': 'Endocrinology',
+        'heart': 'Cardiology',
+        'kidney': 'Nephrology',
+        'liver': 'Hepatology',
+        'malaria': 'Infectious Diseases',
+        'thyroid': 'Endocrinology',
+        'pneumonia': 'Pulmonology'
+    }
+    
+    specialty = disease_doctor_map.get(disease_name, 'General Practice')
+    
+    # Get all doctors and find the first one with matching specialty
+    all_doctors = [
+        {"name": "Dr. Alice Smith", "specialty": "Cardiology", "experience": "10 years", "phone": "1234567890"},
+        {"name": "Dr. Bob Johnson", "specialty": "Nephrology", "experience": "8 years", "phone": "0987654321"},
+        {"name": "Dr. Sarah Williams", "specialty": "Endocrinology", "experience": "12 years", "phone": "1122334455"},
+        {"name": "Dr. Michael Brown", "specialty": "Hepatology", "experience": "9 years", "phone": "2233445566"},
+        {"name": "Dr. Emily Davis", "specialty": "Infectious Diseases", "experience": "7 years", "phone": "3344556677"},
+        {"name": "Dr. James Wilson", "specialty": "Pulmonology", "experience": "11 years", "phone": "4455667788"},
+        {"name": "Dr. Jennifer Martinez", "specialty": "Internal Medicine", "experience": "8 years", "phone": "5566778899"},
+        {"name": "Dr. Robert Taylor", "specialty": "General Practice", "experience": "15 years", "phone": "6677889900"},
+        {"name": "Dr. Lisa Anderson", "specialty": "Preventive Medicine", "experience": "6 years", "phone": "7788990011"},
+        {"name": "Dr. David Thomas", "specialty": "Pathology", "experience": "10 years", "phone": "8899001122"},
+    ]
+    
+    for doctor in all_doctors:
+        if doctor['specialty'] == specialty:
+            return doctor
+    
+    return all_doctors[7]  # Return General Practice as fallback
+
 @app.route('/detect')
 def detect():
     diseases = list(MODEL_FEATURES.keys())
@@ -636,7 +747,14 @@ def consult():
     doctors = [
         {"name": "Dr. Alice Smith", "specialty": "Cardiology", "experience": "10 years", "phone": "1234567890"},
         {"name": "Dr. Bob Johnson", "specialty": "Nephrology", "experience": "8 years", "phone": "0987654321"},
-        # add more doctors
+        {"name": "Dr. Sarah Williams", "specialty": "Endocrinology", "experience": "12 years", "phone": "1122334455"},
+        {"name": "Dr. Michael Brown", "specialty": "Hepatology", "experience": "9 years", "phone": "2233445566"},
+        {"name": "Dr. Emily Davis", "specialty": "Infectious Diseases", "experience": "7 years", "phone": "3344556677"},
+        {"name": "Dr. James Wilson", "specialty": "Pulmonology", "experience": "11 years", "phone": "4455667788"},
+        {"name": "Dr. Jennifer Martinez", "specialty": "Internal Medicine", "experience": "8 years", "phone": "5566778899"},
+        {"name": "Dr. Robert Taylor", "specialty": "General Practice", "experience": "15 years", "phone": "6677889900"},
+        {"name": "Dr. Lisa Anderson", "specialty": "Preventive Medicine", "experience": "6 years", "phone": "7788990011"},
+        {"name": "Dr. David Thomas", "specialty": "Pathology", "experience": "10 years", "phone": "8899001122"},
     ]
     return render_template('consult.html', doctors=doctors)
 
@@ -661,20 +779,25 @@ def signup():
         # Hash password securely using pbkdf2:sha256
         password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
-        conn = get_db_connection()
-        # Check if username already exists
-        existing = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
-        if existing:
+        try:
+            conn = get_db_connection()
+            # Check if username already exists
+            existing = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
+            if existing:
+                conn.close()
+                return render_template('signup.html', error="Username already exists. Choose another.")
+            
+            conn.execute(
+                "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+                (username, email, password_hash)
+            )
+            conn.commit()
             conn.close()
-            return render_template('signup.html', error="Username already exists. Choose another.")
-        
-        conn.execute(
-            "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
-            (username, email, password_hash)
-        )
-        conn.commit()
-        conn.close()
-        return redirect(url_for('login'))
+            return redirect(url_for('login'))
+        except sqlite3.DatabaseError as e:
+            return render_template('signup.html', error=f"Database error: {str(e)}")
+        except Exception as e:
+            return render_template('signup.html', error=f"An error occurred: {str(e)}")
     return render_template('signup.html')
 
 
@@ -838,6 +961,9 @@ def predict(disease_name):
     clinical = suggestion_block.get('clinical', [])
     herbal = suggestion_block.get('herbal', [])
 
+    # ---------- GET RECOMMENDED DOCTOR ----------
+    recommended_doctor = get_recommended_doctor(disease_name)
+
     # ---------- SAVE PREDICTION ----------
     user_id = session.get('user_id')
     if user_id:
@@ -850,6 +976,22 @@ def predict(disease_name):
         conn.close()
 
     # ---------- STYLED HTML OUTPUT ----------
+    doctor_html = f"""
+    <div class="doctor-recommendation-card">
+        <h4><i class="fas fa-stethoscope"></i> Recommended Specialist</h4>
+        <div class="doctor-info">
+            <p><strong>{recommended_doctor['name']}</strong></p>
+            <p style="color: var(--color-secondary); font-weight: 600;">{recommended_doctor['specialty']}</p>
+            <p><strong>Experience:</strong> {recommended_doctor['experience']}</p>
+            <p><strong>Contact:</strong> {recommended_doctor['phone']}</p>
+            <div style="margin-top: 12px;">
+                <a href="tel:{recommended_doctor['phone']}" class="btn secondary small" style="margin-right: 8px;"><i class="fas fa-phone"></i> Call</a>
+                <a href="{url_for('consult')}" class="btn primary small"><i class="fas fa-calendar"></i> View All Doctors</a>
+            </div>
+        </div>
+    </div>
+    """
+
     html = f"""
     <div class="result-box {'normal-box' if result=='Normal' else 'risk-box'}">
         <h3>{disease_name.title()} Prediction</h3>
@@ -872,6 +1014,8 @@ def predict(disease_name):
         </div>
     </div>
 
+    {doctor_html}
+
     <p class="disclaimer">
         Herbal suggestions are supportive only and do not replace medical treatment.
     </p>
@@ -887,5 +1031,6 @@ def predict(disease_name):
 # Run app
 # --------------------------------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    init_db()  # Initialize database on startup
+    app.run(debug=False)
 
