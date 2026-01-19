@@ -13,7 +13,7 @@
 **Multi-Disease Prediction System** is a cutting-edge web-based healthcare platform that harnesses the power of machine learning and artificial intelligence to predict multiple diseases early and accurately. Our intelligent system analyzes patient health parameters and provides personalized insights, helping users make informed healthcare decisions.
 
 ### ✨ Key Highlights
-- 🔬 **7 Disease Predictions** with high accuracy
+- 🔬 **6 Disease Predictions** with high accuracy
 - 🤖 **ML & Rule-Based Models** for diverse prediction approaches
 - 👥 **User-Centric Design** with secure authentication
 - 📊 **Advanced Analytics** with prediction history tracking
@@ -27,7 +27,6 @@
 | Disease | Prediction Type | Features | Model Type |
 |---------|-----------------|----------|-----------|
 | 🩸 **Diabetes** | ML-Based | 8 health parameters | Classification |
-| ❤️ **Heart Disease** | ML-Based | 7 cardiac metrics | Classification |
 | 🫘 **Kidney Disease** | ML-Based | 8 kidney function tests | Classification |
 | 🧬 **Liver Disease** | ML-Based | 7 liver enzymes | Classification |
 | 🦟 **Malaria** | Rule-Based | 5 clinical parameters | Expert System |
@@ -191,7 +190,7 @@ multi-disease-prediction/
 
 ### Model Architecture
 
-**ML-Based Predictions (Diabetes, Heart, Kidney, Liver)**
+**ML-Based Predictions (Diabetes, Kidney, Liver)**
 - Algorithm: Ensemble methods (Random Forest, Gradient Boosting)
 - Training: Scikit-learn ML pipeline
 - Scaling: StandardScaler for feature normalization
@@ -208,12 +207,6 @@ multi-disease-prediction/
 ```
 Input Parameters: Blood Glucose, BMI, Age, Blood Pressure, etc.
 Output: Healthy (0) or Diabetic (1)
-```
-
-#### Heart Disease Prediction
-```
-Input Parameters: Age, Cholesterol, Blood Pressure, Heart Rate, etc.
-Output: Healthy (0) or Heart Disease Risk (1)
 ```
 
 #### Kidney Disease Prediction
@@ -402,7 +395,6 @@ Validation:     Input validation & sanitization
 | Disease | Accuracy | Precision | Recall | F1-Score |
 |---------|----------|-----------|--------|----------|
 | Diabetes | 92% | 89% | 91% | 90% |
-| Heart | 88% | 86% | 87% | 86.5% |
 | Kidney | 94% | 92% | 94% | 93% |
 | Liver | 87% | 85% | 89% | 87% |
 | Malaria | 96% | 95% | 97% | 96% |
@@ -481,7 +473,7 @@ Solution: Check Flask app.py FLASK_APP and FLASK_ENV variables
 
 ## 📞 Support & Contact
 
-- 📧 Email: healthcare@example.com
+- 📧 Email: sanguinnerella@example.com
 - 🐛 Report Issues: [GitHub Issues](https://github.com/code-cooker9/multi-disease-prediction/issues)
 - 💬 Discussions: [GitHub Discussions](https://github.com/code-cooker9/multi-disease-prediction/discussions)
 
