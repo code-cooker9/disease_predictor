@@ -7,12 +7,12 @@
 
 **Suggested Content:**
 
-"The Multi-Disease Prediction System is an AI-powered web-based healthcare platform that integrates both machine learning algorithms and rule-based expert systems to predict seven diseases with high accuracy. This system employs a hybrid approach: four diseases (Diabetes, Heart Disease, Kidney Disease, Liver Disease) use machine learning models trained on real and simulated datasets using Random Forest Classifier from scikit-learn, while three diseases (Malaria, Thyroid, Pneumonia) employ rule-based logic systems grounded in clinical medical guidelines and parameter ranges.
+"The Multi-Disease Prediction System is an AI-powered web-based healthcare platform that integrates both machine learning algorithms and rule-based expert systems to predict six diseases with high accuracy. This system employs a hybrid approach: three diseases (Diabetes, Kidney Disease, Liver Disease) use machine learning models trained on real and simulated datasets using Random Forest Classifier from scikit-learn, while three diseases (Malaria, Thyroid, Pneumonia) employ rule-based logic systems grounded in clinical medical guidelines and parameter ranges.
 
 The platform is built using Flask web framework with SQLite database for user management and prediction history tracking. Users can input clinical parameters through an intuitive web interface, receive predictions with confidence assessments, and get personalized clinical recommendations alongside herbal/lifestyle suggestions. The system achieved accuracy scores ranging from 0.85-0.92 across ML models with F1 scores of 0.83-0.90 and AUC scores of 0.87-0.93. This implementation demonstrates the effectiveness of combining data-driven and knowledge-driven approaches in healthcare prediction systems."
 
 **Key Metrics to Include:**
-- 7 diseases supported
+- 6 diseases supported
 - 2 prediction methodologies (ML + Rule-based)
 - Accuracy: 85-92%
 - 892 lines of main application code
@@ -32,7 +32,7 @@ The platform is built using Flask web framework with SQLite database for user ma
 2. **Disease Classification Flowchart**
    ```
    User Input
-   ├── Is Disease ML-based? (Diabetes, Heart, Kidney, Liver)
+   ├── Is Disease ML-based? (Diabetes, Kidney, Liver)
    │   ├── Load Model + Scaler + Imputer
    │   ├── Preprocess (Impute → Scale)
    │   ├── Random Forest Prediction
@@ -48,7 +48,6 @@ The platform is built using Flask web framework with SQLite database for user ma
    ```
    Disease          | ML/Rule | Features | Input Parameters
    Diabetes         | ML      | 5        | Pregnancies, Glucose, BloodPressure, BMI, Age
-   Heart Disease    | ML      | 7        | age, sex, cp, trestbps, chol, thalach, exang
    Kidney Disease   | ML      | 8        | sg, al, rbc, pc, hemo, wc, rc, bp
    Liver Disease    | ML      | 7        | Age, Gender, Total_Bilirubin, Direct_Bilirubin, Alkaline_Phosphotase, etc.
    Malaria          | Rule    | 5        | Temperature, Headache, Vomiting, JointPain, RBC
@@ -148,7 +147,7 @@ The platform is built using Flask web framework with SQLite database for user ma
 
 **Code Evidence:** `app.py` Lines 45-52 (ML Disease Loading):
 ```python
-ML_DISEASES = ["diabetes", "kidney", "heart", "liver"]
+ML_DISEASES = ["diabetes", "kidney", "liver"]
 MODEL_COMPONENTS = {}
 for disease in ML_DISEASES:
     try:
@@ -242,9 +241,8 @@ for disease in ML_DISEASES:
 
 #### FR2: Disease Prediction (ML-based)
 **Code:** `ml_pipeline.py` Lines 1-212
-- Support 4 diseases with ML models:
+- Support 3 diseases with ML models:
   - Diabetes (5 features)
-  - Heart Disease (7 features)
   - Kidney Disease (8 features)
   - Liver Disease (7 features)
 - Feature scaling using StandardScaler
@@ -390,7 +388,7 @@ auc = roc_auc_score(y, y_prob)
 **Requirement ID: PR-001 - ML-based Prediction**
 - **Description:** Predict disease using trained ML models
 - **Code Location:** `prediction_service.py` (predict_model function)
-- **Supported Diseases:** Diabetes, Heart, Kidney, Liver
+- **Supported Diseases:** Diabetes, Kidney, Liver
 - **Input:** Clinical parameters (feature values)
 - **Processing:**
   1. Load serialized model, scaler, imputer
@@ -460,7 +458,6 @@ auc = roc_auc_score(y, y_prob)
 | Disease | Accuracy Target | F1 Score | AUC |
 |---------|-----------------|----------|-----|
 | Diabetes | ≥88% | ≥0.86 | ≥0.89 |
-| Heart | ≥85% | ≥0.83 | ≥0.87 |
 | Kidney | ≥91% | ≥0.89 | ≥0.92 |
 | Liver | ≥85% | ≥0.83 | ≥0.87 |
 
@@ -683,7 +680,7 @@ def malaria_rule(inputs):
 **Unified Interface:**
 ```python
 def predict(disease, input_data):
-    if disease in ["diabetes", "heart", "liver", "kidney"]:
+    if disease in ["diabetes", "liver", "kidney"]:
         return predict_model(disease, input_data)
     elif disease in ["thyroid", "pneumonia", "malaria"]:
         return predict_rule_based(disease, input_data)
@@ -951,7 +948,6 @@ Metrics: Acc=0.86, F1=0.84, AUC=0.88
 
 4. **Feature Importance**
    - Glucose: Strong predictor for Diabetes
-   - Age + Cholesterol: Strong for Heart Disease
    - Albumin + SG: Clear kidney disease markers
    - Temperature: Critical malaria indicator
 
@@ -1247,14 +1243,12 @@ This system can:
 
 **Training Data Files:**
 - `l_models/diabetes.csv`
-- `l_models/heart.csv`
 - `l_models/indian_liver_patient.csv`
 - `l_models/kidney_disease.csv`
 
 **Simplified Data Files:**
 - `data/diabetes_simple.csv`
 - `data/heart_simple.csv`
-- `data/kidney_simple.csv`
 - `data/liver_simple.csv`
 - `data/malaria_simple.csv`
 - `data/pneumonia_simple.csv`
@@ -1280,10 +1274,7 @@ This system can:
    - Model evaluation metrics
 
 3. **Clinical References:**
-   - Thyroid Hormone Ranges (TSH: 0.4-4.0 µIU/mL)
-   - Malaria Diagnostic Criteria (WHO guidelines)
    - Kidney Function Tests (normal ranges)
-   - Heart Disease Risk Factors
 
 4. **Security Standards:**
    - OWASP Top 10 (Input validation, SQL injection prevention)

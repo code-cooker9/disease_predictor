@@ -30,16 +30,6 @@ MODEL_FEATURES = {
         'bp'
     ],
 
-    'heart': [
-        'age',
-        'sex',
-        'cp',
-        'trestbps',
-        'chol',
-        'thalach',
-        'exang'
-    ],
-
     'liver': [
         'Age',
         'Gender',
@@ -125,9 +115,6 @@ def create_and_save_reliable_model(disease_name, features):
 
         if disease_name == 'diabetes' and 'Glucose' in features:
             target_score = (df['Glucose'] / 200) * 0.4 + (df.get('BMI', 0) / 40) * 0.3
-
-        elif disease_name == 'heart' and 'chol' in features:
-            target_score = (df['chol'] / 300) * 0.4 + (df.get('age', 0) / 100) * 0.3
 
         elif disease_name == 'liver' and 'Total_Bilirubin' in features:
             target_score = (df['Total_Bilirubin'] / df['Total_Bilirubin'].max()) * 0.6

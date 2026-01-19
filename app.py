@@ -76,6 +76,51 @@ def init_db():
             )
         ''')
         
+        # Create consultations table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS consultations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                predicted_disease TEXT NOT NULL,
+                risk_status TEXT NOT NULL,
+                primary_symptoms TEXT NOT NULL,
+                recommended_specialist TEXT NOT NULL,
+                hospital_name TEXT NOT NULL,
+                hospital_address TEXT NOT NULL,
+                consultation_date TEXT NOT NULL,
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+        
+        # Create appointments table
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS appointments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doctor_name TEXT NOT NULL,
+                patient_name TEXT NOT NULL,
+                patient_email TEXT NOT NULL,
+                patient_phone TEXT NOT NULL,
+                appointment_date TEXT NOT NULL,
+                appointment_time TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        # Create consultation intents table (lightweight, offline consultation requests)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS consultation_intents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doctor_name TEXT NOT NULL,
+                patient_name TEXT NOT NULL,
+                mobile_number TEXT NOT NULL,
+                expected_visit_window TEXT NOT NULL,
+                problem_summary TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         conn.commit()
         conn.close()
         print("✓ Database initialized successfully")
@@ -92,7 +137,7 @@ def inject_now():
 # --------------------------------------------------
 # Load ML models
 # --------------------------------------------------
-ML_DISEASES = ["diabetes", "kidney", "heart", "liver"]
+ML_DISEASES = ["diabetes", "kidney", "liver"]
 MODEL_COMPONENTS = {}
 for disease in ML_DISEASES:
     try:
@@ -190,18 +235,49 @@ def malaria_rule(inputs):
     
     Inputs:
     - Temperature (°C): 36.1–37.2 healthy, >38 disease
-    - Headache: None (0) healthy, Severe (1) disease
-    - Vomiting: None (0) healthy, Present (1) disease
-    - JointPain: None (0) healthy, Present (1) disease
+    - Headache: None (0) healthy, Present (1) or Severe (2) indicates risk
+    - Vomiting: None (0) healthy, Present (1) or Severe (2) indicates risk
+    - JointPain: None (0) healthy, Present (1) or Severe (2) indicates risk
     - RBC (millions/µL): 4.2–6.1 healthy, Low (<4.2) disease
 
     Returns: "Normal" or "Risky"
     """
     try:
         temp = float(inputs.get('Temperature', 0))
-        headache = int(inputs.get('Headache', 0))
-        vomiting = int(inputs.get('Vomiting', 0))
-        joint_pain = int(inputs.get('JointPain', 0)) if 'JointPain' in inputs else int(inputs.get('Joint_Pain', 0))
+        
+        # Convert Headache input (None=0, Present=1, Severe=2)
+        headache_input = str(inputs.get('Headache', '0')).strip()
+        if headache_input.lower() == 'none':
+            headache = 0
+        elif headache_input.lower() == 'present':
+            headache = 1
+        elif headache_input.lower() == 'severe':
+            headache = 2
+        else:
+            headache = int(headache_input)
+        
+        # Convert Vomiting input (None=0, Present=1, Severe=2)
+        vomiting_input = str(inputs.get('Vomiting', '0')).strip()
+        if vomiting_input.lower() == 'none':
+            vomiting = 0
+        elif vomiting_input.lower() == 'present':
+            vomiting = 1
+        elif vomiting_input.lower() == 'severe':
+            vomiting = 2
+        else:
+            vomiting = int(vomiting_input)
+        
+        # Convert JointPain input (None=0, Present=1, Severe=2)
+        joint_pain_input = str(inputs.get('JointPain', '0')).strip() if 'JointPain' in inputs else str(inputs.get('Joint_Pain', '0')).strip()
+        if joint_pain_input.lower() == 'none':
+            joint_pain = 0
+        elif joint_pain_input.lower() == 'present':
+            joint_pain = 1
+        elif joint_pain_input.lower() == 'severe':
+            joint_pain = 2
+        else:
+            joint_pain = int(joint_pain_input)
+        
         rbc = float(inputs.get('RBC', 0))
     except:
         return "Risky"
@@ -210,16 +286,16 @@ def malaria_rule(inputs):
     if temp > 38:
         return "Risky"
     
-    # Headache: None (0) healthy, Severe (1) disease
-    if headache == 1:
+    # Headache: None (0) healthy, Present (1) or Severe (2) indicates risk
+    if headache > 0:
         return "Risky"
     
-    # Vomiting: None (0) healthy, Present (1) disease
-    if vomiting == 1:
+    # Vomiting: None (0) healthy, Present (1) or Severe (2) indicates risk
+    if vomiting > 0:
         return "Risky"
     
-    # Joint Pain: None (0) healthy, Present (1) disease
-    if joint_pain == 1:
+    # Joint Pain: None (0) healthy, Present (1) or Severe (2) indicates risk
+    if joint_pain > 0:
         return "Risky"
     
     # RBC: 4.2–6.1 healthy, Low (<4.2) disease
@@ -235,7 +311,7 @@ def pneumonia_rule(inputs):
     
     Inputs:
     - Age: 20–40 healthy, >50 at higher risk
-    - CoughSeverity: None (0) healthy, Mild (1) or Severe (2) disease
+    - CoughSeverity: None (0) healthy, Mild (1) or Severe (2) disease or text values: "none" (0), "present" (1)
     - WBC (/µL): 4k–10k healthy, >10k disease
     - OxygenSaturation (%): 95–100 healthy, <94 disease
     - Fever (°C): 36.1–37.2 healthy, >38 disease
@@ -244,7 +320,14 @@ def pneumonia_rule(inputs):
     """
     try:
         age = float(inputs.get('Age', 0))
-        cough_severity = int(inputs.get('CoughSeverity', 0))
+        cough_input = inputs.get('CoughSeverity', '0').strip().lower()
+        # Map text values to numeric: "none" -> 0, "present" -> 1, or parse as int directly
+        if cough_input == 'none':
+            cough_severity = 0
+        elif cough_input == 'present':
+            cough_severity = 1
+        else:
+            cough_severity = int(cough_input)
         fever = float(inputs.get('Fever', 0))
         wbc = float(inputs.get('WBC', 0))
         oxygen = float(inputs.get('OxygenSaturation', 0)) if 'OxygenSaturation' in inputs else float(inputs.get('Oxygen_Saturation', 0))
@@ -275,62 +358,7 @@ def pneumonia_rule(inputs):
 
     return "Normal"
 
-def heart_rule(inputs):
-    """
-    Heart Disease Risk Assessment
-    
-    Inputs:
-    - age (years)
-    - sex (0 = Male, 1 = Female)
-    - cp (chest pain type: 0-3)
-    - trestbps (resting blood pressure)
-    - chol (cholesterol)
-    - thalach (max heart rate achieved)
-    - exang (exercise induced angina: 0 = No, 1 = Yes)
-    
-    Returns: "Normal" or "Risky"
-    """
-    try:
-        age = float(inputs.get('age', 0))
-        sex = int(inputs.get('sex', -1))
-        cp = int(inputs.get('cp', -1))
-        trestbps = float(inputs.get('trestbps', 0))
-        chol = float(inputs.get('chol', 0))
-        thalach = float(inputs.get('thalach', 0))
-        exang = int(inputs.get('exang', -1))
-    except:
-        return "Risky"
-    
-    risk_factors = 0
-    
-    # Age risk (higher risk for older patients)
-    if age > 55:
-        risk_factors += 1
-    
-    # High cholesterol
-    if chol > 240:
-        risk_factors += 1
-    elif chol > 200:
-        risk_factors += 0.5
-    
-    # High blood pressure
-    if trestbps > 140:
-        risk_factors += 1
-    elif trestbps > 130:
-        risk_factors += 0.5
-    
-    # Low max heart rate (indicates poor cardiac fitness)
-    if thalach < 100:
-        risk_factors += 1
-    
-    # Exercise induced angina (chest pain with exercise)
-    if exang == 1:
-        risk_factors += 2
-    
-    # Chest pain type (type 0 is typical angina, higher risk)
-    if cp == 0 or cp == 1:
-        risk_factors += 1
-    
+
     # Risk assessment
     if risk_factors >= 3:
         return "Risky"
@@ -464,17 +492,12 @@ RULE_BASED = {
     'malaria': malaria_rule,
     'pneumonia': pneumonia_rule,
     'kidney': kidney_rule,
-    'liver': liver_rule,
-    'heart': heart_rule
+    'liver': liver_rule
 }
 RECOMMENDATIONS = {
     'diabetes': {
         'Normal': "Keep a balanced diet and exercise regularly to maintain healthy blood sugar levels.",
         'Risky': "Consult a doctor for blood sugar management, maintain a healthy diet, and monitor glucose levels."
-    },
-    'heart': {
-        'Normal': "Maintain cardiovascular health through exercise, low salt intake, and regular checkups.",
-        'Risky': "Seek immediate medical consultation. Monitor blood pressure, cholesterol, and heart health."
     },
     'kidney': {
         'Normal': "Stay hydrated, avoid excessive salt, and maintain kidney-friendly habits.",
@@ -530,32 +553,7 @@ SUGGESTIONS = {
         }
     },
 
-    'heart': {
-        'Normal': {
-            'clinical': [
-                "Maintain healthy cholesterol levels.",
-                "Regular cardiovascular exercise.",
-                "Routine blood pressure monitoring."
-            ],
-            'herbal': [
-                "Garlic supports heart health.",
-                "Omega-3 rich foods like flaxseed are beneficial.",
-                "Meditation improves cardiovascular wellness."
-            ]
-        },
-        'Risky': {
-            'clinical': [
-                "Immediate cardiologist consultation required.",
-                "Strict blood pressure and cholesterol control.",
-                "Medication adherence is essential."
-            ],
-            'herbal': [
-                "Arjuna bark traditionally supports heart function.",
-                "Reduce salt and saturated fats.",
-                "Smoking cessation is critical."
-            ]
-        }
-    },
+
 
     'kidney': {
         'Normal': {
@@ -706,7 +704,6 @@ def get_recommended_doctor(disease_name):
     """Map diseases to recommended doctor specialties"""
     disease_doctor_map = {
         'diabetes': 'Endocrinology',
-        'heart': 'Cardiology',
         'kidney': 'Nephrology',
         'liver': 'Hepatology',
         'malaria': 'Infectious Diseases',
@@ -744,23 +741,182 @@ def detect():
 
 @app.route('/consult')
 def consult():
-    doctors = [
-        {"name": "Dr. Alice Smith", "specialty": "Cardiology", "experience": "10 years", "phone": "1234567890"},
-        {"name": "Dr. Bob Johnson", "specialty": "Nephrology", "experience": "8 years", "phone": "0987654321"},
-        {"name": "Dr. Sarah Williams", "specialty": "Endocrinology", "experience": "12 years", "phone": "1122334455"},
-        {"name": "Dr. Michael Brown", "specialty": "Hepatology", "experience": "9 years", "phone": "2233445566"},
-        {"name": "Dr. Emily Davis", "specialty": "Infectious Diseases", "experience": "7 years", "phone": "3344556677"},
-        {"name": "Dr. James Wilson", "specialty": "Pulmonology", "experience": "11 years", "phone": "4455667788"},
-        {"name": "Dr. Jennifer Martinez", "specialty": "Internal Medicine", "experience": "8 years", "phone": "5566778899"},
-        {"name": "Dr. Robert Taylor", "specialty": "General Practice", "experience": "15 years", "phone": "6677889900"},
-        {"name": "Dr. Lisa Anderson", "specialty": "Preventive Medicine", "experience": "6 years", "phone": "7788990011"},
-        {"name": "Dr. David Thomas", "specialty": "Pathology", "experience": "10 years", "phone": "8899001122"},
-    ]
-    return render_template('consult.html', doctors=doctors)
+    return render_template('consult.html')
 
+@app.route('/submit_consultation_intent', methods=['POST'])
+def submit_consultation_intent():
+    """Handle offline consultation intent submission"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['doctor_name', 'patient_name', 'mobile_number', 'expected_visit_window', 'problem_summary']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'status': 'error', 'message': f'{field.replace("_", " ").title()} is required.'})
+        
+        # Validate mobile number (10 digits)
+        import re
+        mobile = data.get('mobile_number', '').strip()
+        if not re.match(r'^\d{10}$', mobile):
+            return jsonify({'status': 'error', 'message': 'Invalid mobile number. Please enter 10 digits.'})
+        
+        # Validate problem summary length
+        problem_summary = data.get('problem_summary', '').strip()
+        if len(problem_summary) > 500:
+            return jsonify({'status': 'error', 'message': 'Problem summary cannot exceed 500 characters.'})
+        
+        # Save consultation intent to database
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO consultation_intents (doctor_name, patient_name, mobile_number, expected_visit_window, problem_summary)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (
+            data.get('doctor_name'),
+            data.get('patient_name'),
+            mobile,
+            data.get('expected_visit_window'),
+            problem_summary
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Consultation request submitted. Our team will contact you shortly.'
+        })
+    
+    except Exception as e:
+        print(f"Error submitting consultation intent: {e}")
+        return jsonify({'status': 'error', 'message': 'Failed to submit request. Please try again.'})
 
-@app.route('/about')
+@app.route('/book_appointment', methods=['POST'])
+def book_appointment():
+    """Handle appointment booking"""
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['doctor_name', 'patient_name', 'patient_email', 'patient_phone', 'appointment_date', 'appointment_time']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'status': 'error', 'message': f'{field.replace("_", " ").title()} is required.'})
+        
+        # Validate email format
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, data.get('patient_email')):
+            return jsonify({'status': 'error', 'message': 'Invalid email address.'})
+        
+        # Save appointment to database
+        conn = sqlite3.connect('app.db')
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO appointments (doctor_name, patient_name, patient_email, patient_phone, appointment_date, appointment_time)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            data.get('doctor_name'),
+            data.get('patient_name'),
+            data.get('patient_email'),
+            data.get('patient_phone'),
+            data.get('appointment_date'),
+            data.get('appointment_time')
+        ))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            'status': 'success',
+            'message': f'Appointment booked with {data.get("doctor_name")} on {data.get("appointment_date")} at {data.get("appointment_time")}. You will receive a confirmation at {data.get("patient_email")}.'
+        })
+    
+    except Exception as e:
+        print(f"Error booking appointment: {e}")
+        return jsonify({'status': 'error', 'message': 'Failed to book appointment. Please try again.'})
+
+@app.route('/consultation')
+def consultation():
+    """Display consultation form"""
+    return render_template('consultation_form.html')
+
+@app.route('/submit_consultation', methods=['POST'])
+def submit_consultation():
+    """Handle consultation form submission"""
+    try:
+        data = request.get_json()
+        user_id = session.get('user_id')
+        
+        if not user_id:
+            return jsonify({'status': 'error', 'message': 'You must be logged in to submit a consultation.'})
+        
+        # Validate required fields
+        required_fields = ['predicted_disease', 'risk_status', 'primary_symptoms', 'recommended_specialist', 'hospital_name', 'hospital_address', 'consultation_date']
+        for field in required_fields:
+            if not data.get(field):
+                return jsonify({'status': 'error', 'message': f'{field.replace("_", " ").title()} is required.'})
+        
+        try:
+            conn = get_db_connection()
+            conn.execute(
+                """INSERT INTO consultations 
+                   (user_id, predicted_disease, risk_status, primary_symptoms, recommended_specialist, 
+                    hospital_name, hospital_address, consultation_date, notes) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    user_id,
+                    data.get('predicted_disease'),
+                    data.get('risk_status'),
+                    data.get('primary_symptoms'),
+                    data.get('recommended_specialist'),
+                    data.get('hospital_name'),
+                    data.get('hospital_address'),
+                    data.get('consultation_date'),
+                    data.get('notes', '')
+                )
+            )
+            conn.commit()
+            conn.close()
+            
+            return jsonify({
+                'status': 'success',
+                'message': 'Consultation scheduled successfully! Your consultation details have been saved.'
+            })
+        except Exception as db_error:
+            print(f"Database error: {db_error}")
+            return jsonify({'status': 'error', 'message': 'Failed to save consultation. Please try again.'})
+    
+    except Exception as e:
+        print(f"Error submitting consultation: {e}")
+        return jsonify({'status': 'error', 'message': 'An error occurred. Please try again.'})
+
+@app.route('/about', methods=['GET', 'POST'])
 def about():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        email = request.form.get('email')
+        message = request.form.get('message')
+        
+        if not name or not email or not message:
+            return jsonify({'status': 'error', 'message': 'All fields are required.'})
+        
+        try:
+            conn = get_db_connection()
+            conn.execute(
+                "INSERT INTO contact (name, email, message) VALUES (?, ?, ?)",
+                (name, email, message)
+            )
+            conn.commit()
+            conn.close()
+            return jsonify({'status': 'success', 'message': 'Thank you! Your message has been received. We will get back to you soon.'})
+        except Exception as e:
+            print(f"Error saving contact message: {e}")
+            return jsonify({'status': 'error', 'message': 'An error occurred. Please try again.'})
+    
     return render_template('about.html')
 
 # --------------------------------------------------
@@ -952,7 +1108,6 @@ def predict(disease_name):
         else:
             result = "Normal" if pred == 0 else "Risky"
 
-
     else:
         return jsonify({'status': 'error', 'error': 'Disease not recognized.'})
 
@@ -961,8 +1116,25 @@ def predict(disease_name):
     clinical = suggestion_block.get('clinical', [])
     herbal = suggestion_block.get('herbal', [])
 
-    # ---------- GET RECOMMENDED DOCTOR ----------
-    recommended_doctor = get_recommended_doctor(disease_name)
+    # ---------- GET RECOMMENDED DOCTOR (ONLY IF RISKY) ----------
+    doctor_html = ""
+    if result == "Risky":
+        recommended_doctor = get_recommended_doctor(disease_name)
+        doctor_html = f"""
+        <div class="doctor-recommendation-card">
+            <h4><i class="fas fa-stethoscope"></i> Recommended Specialist</h4>
+            <div class="doctor-info">
+                <p><strong>{recommended_doctor['name']}</strong></p>
+                <p style="color: var(--color-secondary); font-weight: 600;">{recommended_doctor['specialty']}</p>
+                <p><strong>Experience:</strong> {recommended_doctor['experience']}</p>
+                <p><strong>Contact:</strong> {recommended_doctor['phone']}</p>
+                <div style="margin-top: 12px;">
+                    <a href="tel:{recommended_doctor['phone']}" class="btn secondary small" style="margin-right: 8px;"><i class="fas fa-phone"></i> Call</a>
+                    <a href="{url_for('consult')}" class="btn primary small"><i class="fas fa-calendar"></i> View All Doctors</a>
+                </div>
+            </div>
+        </div>
+        """
 
     # ---------- SAVE PREDICTION ----------
     user_id = session.get('user_id')
@@ -976,22 +1148,6 @@ def predict(disease_name):
         conn.close()
 
     # ---------- STYLED HTML OUTPUT ----------
-    doctor_html = f"""
-    <div class="doctor-recommendation-card">
-        <h4><i class="fas fa-stethoscope"></i> Recommended Specialist</h4>
-        <div class="doctor-info">
-            <p><strong>{recommended_doctor['name']}</strong></p>
-            <p style="color: var(--color-secondary); font-weight: 600;">{recommended_doctor['specialty']}</p>
-            <p><strong>Experience:</strong> {recommended_doctor['experience']}</p>
-            <p><strong>Contact:</strong> {recommended_doctor['phone']}</p>
-            <div style="margin-top: 12px;">
-                <a href="tel:{recommended_doctor['phone']}" class="btn secondary small" style="margin-right: 8px;"><i class="fas fa-phone"></i> Call</a>
-                <a href="{url_for('consult')}" class="btn primary small"><i class="fas fa-calendar"></i> View All Doctors</a>
-            </div>
-        </div>
-    </div>
-    """
-
     html = f"""
     <div class="result-box {'normal-box' if result=='Normal' else 'risk-box'}">
         <h3>{disease_name.title()} Prediction</h3>

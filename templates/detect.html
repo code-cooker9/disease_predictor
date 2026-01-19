@@ -37,7 +37,7 @@
 {% block scripts %}
 <script>
     const DISEASE_PARAMS = JSON.parse('{{ DISEASE_PARAMETERS | tojson }}');
-    const CATEGORICAL_FIELDS = ['Blood_Pressure', 'Sex', 'Thyroxine']; 
+    const CATEGORICAL_FIELDS = ['Blood_Pressure', 'Sex', 'Thyroxine', 'cp', 'sex', 'exang', 'Headache', 'Vomiting', 'JointPain', 'Gender', 'CoughSeverity']; 
 
     // Mapping of parameter names to full descriptive names
     const PARAM_LABELS = {
@@ -58,11 +58,6 @@
         'age': 'Age (years)',
         'sex': 'Sex',
         'Sex': 'Sex',
-        'cp': 'Chest Pain Type',
-        'trestbps': 'Resting Blood Pressure (mmHg)',
-        'chol': 'Cholesterol Level (mg/dL)',
-        'thalach': 'Maximum Heart Rate Achieved',
-        'exang': 'Exercise Induced Angina',
         'Total_Bilirubin': 'Total Bilirubin (mg/dL)',
         'Direct_Bilirubin': 'Direct Bilirubin (mg/dL)',
         'Alkaline_Phosphotase': 'Alkaline Phosphatase (IU/L)',
@@ -88,10 +83,20 @@
     function getDropdownOptions(param, diseaseKey) {
         if (param === 'Blood_Pressure') {
             return '<option value="Normal">Normal</option><option value="Abnormal">Abnormal</option>';
-        } else if (param === 'Sex') {
+        } else if (param === 'Gender') {
+            return '<option value="">Select Gender</option><option value="male">male</option><option value="female">female</option>';
+        } else if (param === 'Sex' || param === 'sex') {
             return '<option value="">Select Sex</option><option value="Male">Male</option><option value="Female">Female</option>';
         } else if (param === 'Thyroxine') {
             return '<option value="">Select Thyroxine Status</option><option value="Normal">Normal</option><option value="High">High</option><option value="Low">Low</option>';
+        } else if (param === 'CoughSeverity') {
+            return '<option value="">Select Cough Severity</option><option value="0">none</option><option value="1">present</option>';
+        } else if (param === 'Headache') {
+            return '<option value="">Select Headache Severity</option><option value="0">None</option><option value="1">Present</option><option value="2">Severe</option>';
+        } else if (param === 'Vomiting') {
+            return '<option value="">Select Vomiting Status</option><option value="0">None</option><option value="1">Present</option><option value="2">Severe</option>';
+        } else if (param === 'JointPain') {
+            return '<option value="">Select Joint Pain Status</option><option value="0">None</option><option value="1">Present</option><option value="2">Severe</option>';
         }
         return '<option value="Normal">Normal</option><option value="Abnormal">Abnormal</option>';
     }

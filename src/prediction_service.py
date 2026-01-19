@@ -39,7 +39,7 @@ def load_model_files(disease):
 
 def predict_model(disease, input_features):
     """
-    disease: str -> 'diabetes', 'heart', 'liver', 'kidney'
+    disease: str -> 'diabetes', 'liver', 'kidney'
     input_features: list or np.array of input values
     """
     model, scaler, imputer = load_model_files(disease)
@@ -92,7 +92,7 @@ def predict(disease, input_data):
     disease: str -> one of 7 diseases
     input_data: list (for model-based) or dict (for rule-based)
     """
-    if disease in ["diabetes", "heart", "liver", "kidney"]:
+    if disease in ["diabetes", "liver", "kidney"]:
         return predict_model(disease, input_data)
     elif disease in ["thyroid", "pneumonia", "malaria"]:
         return predict_rule_based(disease, input_data)

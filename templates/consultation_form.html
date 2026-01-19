@@ -1,0 +1,126 @@
+{% extends "layout.html" %}
+{% block title %}Schedule Consultation{% endblock %}
+
+{% block content %}
+<section class="form-container" style="max-width: 700px; margin: 40px auto;">
+    <h2 style="text-align: center; color: var(--color-primary); margin-bottom: 30px;">📋 Schedule Your Consultation</h2>
+    <p style="text-align: center; margin-bottom: 30px; color: #666;">Book a consultation with a specialist based on your health assessment</p>
+
+    <form id="consultationForm">
+        <div class="form-group">
+            <label for="predictedDisease">Predicted Disease*</label>
+            <input type="text" id="predictedDisease" name="predicted_disease" class="form-input" readonly required>
+        </div>
+
+        <div class="form-group">
+            <label for="riskStatus">Risk Status*</label>
+            <select id="riskStatus" name="risk_status" class="form-select" required>
+                <option value="">Select Risk Status</option>
+                <option value="Normal">Normal</option>
+                <option value="Risky">Risky</option>
+                <option value="Borderline">Borderline</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="primarySymptoms">Primary Symptoms*</label>
+            <textarea id="primarySymptoms" name="primary_symptoms" class="form-input" rows="3" placeholder="Describe your main symptoms..." required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="recommendedSpecialist">Recommended Specialist*</label>
+            <input type="text" id="recommendedSpecialist" name="recommended_specialist" class="form-input" placeholder="e.g., Cardiologist" required>
+        </div>
+
+        <div class="form-group">
+            <label for="hospitalName">Hospital Name*</label>
+            <input type="text" id="hospitalName" name="hospital_name" class="form-input" placeholder="Enter hospital/clinic name" required>
+        </div>
+
+        <div class="form-group">
+            <label for="hospitalAddress">Hospital Address*</label>
+            <textarea id="hospitalAddress" name="hospital_address" class="form-input" rows="2" placeholder="Enter complete hospital address..." required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="consultationDate">Consultation Date*</label>
+            <input type="date" id="consultationDate" name="consultation_date" class="form-input" required>
+        </div>
+
+        <div class="form-group">
+            <label for="notes">Additional Notes (Optional)</label>
+            <textarea id="notes" name="notes" class="form-input" rows="3" placeholder="Any additional information..."></textarea>
+        </div>
+
+        <button type="submit" class="btn primary large" style="width: 100%; margin-top: 20px;">Schedule Consultation</button>
+    </form>
+
+    <div id="consultationMessage" style="text-align: center; margin-top: 20px; font-weight: 500;"></div>
+</section>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Get disease from URL parameters
+    function getConsultationData() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const disease = urlParams.get('disease') || 'Unknown';
+        const riskStatus = urlParams.get('risk_status') || '';
+        
+        document.getElementById('predictedDisease').value = disease;
+        if (riskStatus) {
+            document.getElementById('riskStatus').value = riskStatus;
+        }
+    }
+
+    // Initialize on page load
+    window.addEventListener('load', getConsultationData);
+
+    // Form submission
+    document.getElementById('consultationForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            predicted_disease: document.getElementById('predictedDisease').value,
+            risk_status: document.getElementById('riskStatus').value,
+            primary_symptoms: document.getElementById('primarySymptoms').value,
+            recommended_specialist: document.getElementById('recommendedSpecialist').value,
+            hospital_name: document.getElementById('hospitalName').value,
+            hospital_address: document.getElementById('hospitalAddress').value,
+            consultation_date: document.getElementById('consultationDate').value,
+            notes: document.getElementById('notes').value
+        };
+
+        const messageDiv = document.getElementById('consultationMessage');
+
+        try {
+            const response = await fetch('{{ url_for("submit_consultation") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await response.json();
+
+            if (data.status === 'success') {
+                messageDiv.style.color = 'var(--color-success)';
+                messageDiv.textContent = data.message;
+                document.getElementById('consultationForm').reset();
+                setTimeout(() => {
+                    window.location.href = '{{ url_for("detect") }}';
+                }, 2000);
+            } else {
+                messageDiv.style.color = 'var(--color-danger)';
+                messageDiv.textContent = data.message;
+            }
+        } catch (error) {
+            messageDiv.style.color = 'var(--color-danger)';
+            messageDiv.textContent = 'An error occurred. Please try again.';
+            console.error('Error:', error);
+        }
+    });
+</script>
+{% endblock %}

@@ -3,47 +3,63 @@
 
 {% block content %}
 
-<section class="hero-section" style="background-image: url('{{ url_for('static', filename='images/hero_bg.jpg') }}');">
-    <div class="hero-content">
-        <h1>AI-Powered Predictive Healthcare</h1>
-        <p>Harness the power of AI to proactively assess your health risk for multiple diseases.</p>
-
-        {% if 'user_id' in session %}
-            <a href="{{ url_for('detect') }}" style="display: inline-block; padding: 10px 20px; color: black; font-weight: bold; text-decoration: none; border: 2px solid var(--color-primary); border-radius: 5px;">Start Detection Now <i class="fas fa-arrow-right"></i></a>
-        {% else %}
-            <a href="{{ url_for('signup') }}" style="display: inline-block; padding: 10px 20px; color: black; font-weight: bold; text-decoration: none; border: 2px solid var(--color-primary); border-radius: 5px;">Sign Up & Get Started <i class="fas fa-user-plus"></i></a>
-        {% endif %}
+<section class="hero-section">
+    <div class="hero-background"></div>
+    <div class="hero-container">
+        <div class="hero-text-side">
+            <h1 class="hero-title">AI-Powered Predictive Healthcare</h1>
+            <p class="hero-subtitle">Advanced disease risk assessment powered by machine learning</p>
+            <p class="hero-description">Detect health risks early with our intelligent predictive models</p>
+            <div class="hero-cta">
+                {% if 'user_id' in session %}
+                    <a href="{{ url_for('detect') }}" class="btn primary">Start Detection Now <i class="fas fa-arrow-right"></i></a>
+                {% else %}
+                    <a href="{{ url_for('signup') }}" class="btn primary">Sign Up & Get Started <i class="fas fa-user-plus"></i></a>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </section>
 
 <section class="features-section">
-    <h2 class="section-title">Key Features & Ethical Vision</h2>
-    <div class="feature-grid">
-        
-        <div class="feature-card">
-            <i class="fas fa-brain"></i>
-            <h3>Multi-Disease Analysis</h3>
-            <p>Predict risk for Diabetes, Heart, Kidney, and more using trained Machine Learning models.</p>
-        </div>
-        
-        <div class="feature-card">
-            <i class="fas fa-shield-alt"></i>
-            <h3>Reliability First</h3>
-            <p>Our models are trained on verified datasets, rigorously cross-validated, and optimized for high accuracy.</p>
-        </div>
-        
-        <div class="feature-card">
-            <i class="fas fa-hand-holding-medical"></i>
-            <h3>Holistic Guidance</h3>
-            <p>Receive immediate, actionable clinical and natural recommendations based on your individual results.</p>
-        </div>
-        
-        <div class="feature-card">
-            <i class="fas fa-lock"></i>
-            <h3>Data Security</h3>
-            <p>Your health data and prediction history are securely stored using cryptographic hashing for credentials and robust database practices.</p>
-        </div>
+    <div class="container">
+        <h2 class="section-title">Why Choose Our Platform?</h2>
+        <p class="section-subtitle">Comprehensive health insights backed by science and technology</p>
+        <div class="feature-grid">
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <h3>Multi-Disease Analysis</h3>
+                <p>Predict risk for Diabetes, Kidney, Liver, Thyroid, Malaria, and Pneumonia using trained Machine Learning models.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h3>Reliability First</h3>
+                <p>Our models are trained on verified datasets, rigorously cross-validated, and optimized for high accuracy and precision.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-hand-holding-medical"></i>
+                </div>
+                <h3>Holistic Guidance</h3>
+                <p>Receive immediate, actionable clinical and natural recommendations based on your individual health assessment results.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h3>Data Security</h3>
+                <p>Your health data and prediction history are securely stored with cryptographic security and robust database protection.</p>
+            </div>
 
+        </div>
     </div>
 </section>
 

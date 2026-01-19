@@ -13,26 +13,19 @@
                     <th>Date</th>
                     <th>Disease</th>
                     <th>Risk Result</th>
-                    <th>Confidence</th>
                     <th>Key Input Snapshot</th>
                 </tr>
             </thead>
             <tbody>
                 {% for record in history %}
                 <tr>
-                    <td>{{ record.date.split(' ')[0] }}</td>
-                    <td>{{ record.disease.title() }}</td>
-                    <td class="risk-{{ record.result }}">
-                        {{ record.result }}
+                    <td>{{ record['timestamp'] }}</td>
+                    <td>{{ record['disease'].title() }}</td>
+                    <td class="risk-{{ record['result'].lower() }}">
+                        <strong>{{ record['result'] }}</strong>
                     </td>
-                    <td>{{ record.confidence }}</td>
                     <td>
-                        {% for key, value in record.inputs.items() | dictsort %}
-                            {% if loop.index <= 3 %}
-                                <small><strong>{{ key }}:</strong> {{ value }}<br></small>
-                            {% endif %}
-                        {% endfor %}
-                        {% if record.inputs | length > 3 %}<small>...</small>{% endif %}
+                        <small>{{ record['input_data'][:80] }}...</small>
                     </td>
                 </tr>
                 {% endfor %}
@@ -43,4 +36,37 @@
     <p style="text-align: center; padding: 50px; background-color: var(--color-card-bg); border-radius: 8px;">No prediction history found. Start using the <a href="{{ url_for('detect') }}" style="color: var(--color-primary);">Detect</a> section to view your personalized logs here!</p>
     {% endif %}
 </section>
+
+<style>
+    .history-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .history-table thead {
+        background-color: var(--color-primary);
+        color: white;
+    }
+
+    .history-table th,
+    .history-table td {
+        padding: 15px;
+        text-align: left;
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .history-table tbody tr:hover {
+        background-color: var(--color-secondary-bg);
+    }
+
+    .risk-normal {
+        color: #28a745;
+        font-weight: 600;
+    }
+
+    .risk-risky {
+        color: #dc3545;
+        font-weight: 600;
+    }
+</style>
 {% endblock %}

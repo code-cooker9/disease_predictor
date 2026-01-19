@@ -7,9 +7,8 @@ ML & Rule-Based Prediction System – Clear Explanation (Points Only)
 
 2. Diseases Using Machine Learning (CSV-based)
 
-    The following 4 diseases use CSV data and ML models:
+    The following 3 diseases use CSV data and ML models:
         Diabetes
-        Heart Disease
         Kidney Disease
         Liver Disease
 
@@ -46,7 +45,6 @@ ML & Rule-Based Prediction System – Clear Explanation (Points Only)
         One target column (Outcome, target, classification, or Dataset)
 
     Example:
-        Heart → target
         Kidney → classification
         Liver → Dataset
 

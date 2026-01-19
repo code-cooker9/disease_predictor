@@ -74,11 +74,6 @@ The system includes the following trained ML models:
    - Features: 8 health parameters
    - File: `models/diabetes_model.pkl`
 
-2. **Heart Disease Prediction**
-   - Model: Random Forest / SVM
-   - Features: 7 cardiac parameters
-   - File: `models/heart_model.pkl`
-
 3. **Kidney Disease Prediction**
    - Model: Ensemble methods
    - Features: 8 kidney function parameters
@@ -112,7 +107,6 @@ The system includes the following trained ML models:
 ### Dataset Files
 Located in `data/` directory:
 - `diabetes_simple.csv` - 768 records
-- `heart_simple.csv` - 152 records
 - `kidney_simple.csv` - 142 records
 - `liver_simple.csv` - 152 records
 - `malaria_simple.csv` - 152 records

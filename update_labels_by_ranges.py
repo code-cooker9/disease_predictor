@@ -42,43 +42,6 @@ kidney_df['classification'] = kidney_df['health_status']
 kidney_df.to_csv('data/kidney_simple.csv', index=False)
 print("✓ kidney_simple.csv updated")
 
-# Update Heart Disease CSV
-print("Updating heart_simple.csv...")
-heart_df = pd.read_csv('data/heart_simple.csv')
-
-def classify_heart(row):
-    age = row['age']
-    cp = row['cp']
-    trestbps = row['trestbps']
-    chol = row['chol']
-    thalach = row['thalach']
-    exang = row['exang']
-    
-    # Age: 20-40 healthy, >50 indicates disease
-    if age > 50:
-        return 1
-    # CP (Chest Pain): None (0) healthy, others indicate disease
-    if cp != 0:
-        return 1
-    # Resting BP: 90-120/60-80 healthy, ≥140/90 indicates disease
-    if trestbps >= 140 or trestbps < 90:
-        return 1
-    # Cholesterol: <200 healthy, >240 indicates disease
-    if chol > 240:
-        return 1
-    # Max Heart Rate: 90-150 healthy, <90 indicates disease
-    if thalach < 90:
-        return 1
-    # Exercise induced angina: No (0) healthy, Yes (1) indicates disease
-    if exang == 1:
-        return 1
-    
-    return 0
-
-heart_df['health_status'] = heart_df.apply(classify_heart, axis=1)
-heart_df['target'] = heart_df['health_status']
-heart_df.to_csv('data/heart_simple.csv', index=False)
-print("✓ heart_simple.csv updated")
 
 # Update Liver Disease CSV
 print("Updating liver_simple.csv...")

@@ -1,12 +1,11 @@
 # Multi-Disease Prediction System
 
-A web-based healthcare application that uses machine learning to predict various diseases and provide personalized health insights. The system can predict multiple diseases including diabetes, heart disease, liver disease, kidney disease, and more.
+A web-based healthcare application that uses machine learning to predict various diseases and provide personalized health insights. The system can predict multiple diseases including diabetes, liver disease, kidney disease, and more.
 
 ## 🌟 Features
 
 - **Multi-Disease Prediction**: Support for various diseases including:
   - Diabetes
-  - Heart Disease
   - Kidney Disease
   - Liver Disease
   - Malaria
